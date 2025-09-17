@@ -23,3 +23,5 @@ documentation links
 - [Securing Google Kubernetes Engine with IAM and Pod Security Admission](https://www.cloudskillsboost.google/paths/76/course_templates/33/labs/565701)
 - [Using Cloud SQL with Google Kubernetes Engine and Workload Identity](https://www.cloudskillsboost.google/focuses/99664?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=53076164)
 - [GKE Workload Optimization](https://www.cloudskillsboost.google/focuses/15706?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=53532061)
+- [How to Use a Network Policy on Google Kubernetes Engine](https://www.cloudskillsboost.google/focuses/5572?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=53534350)
+- 
