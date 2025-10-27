@@ -25,3 +25,5 @@ documentation links
 - [GKE Workload Optimization](https://www.cloudskillsboost.google/focuses/15706?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=53532061)
 - [How to Use a Network Policy on Google Kubernetes Engine](https://www.cloudskillsboost.google/focuses/5572?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=53534350)
 - [Google Kubernetes Engine Pipeline using Cloud Build](https://www.skills.google/focuses/52829?catalog_rank=%7B%22rank%22%3A6%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57329752)
+- [Continuous Delivery with Google Cloud Deploy](https://www.skills.google/focuses/99663?catalog_rank=%7B%22rank%22%3A2%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57344097)
+- 
