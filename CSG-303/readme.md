@@ -26,4 +26,9 @@ documentation links
 - [How to Use a Network Policy on Google Kubernetes Engine](https://www.cloudskillsboost.google/focuses/5572?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=53534350)
 - [Google Kubernetes Engine Pipeline using Cloud Build](https://www.skills.google/focuses/52829?catalog_rank=%7B%22rank%22%3A6%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57329752)
 - [Continuous Delivery with Google Cloud Deploy](https://www.skills.google/focuses/99663?catalog_rank=%7B%22rank%22%3A2%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57344097)
-- 
+- [Cloud Monitoring: Qwik Start](https://www.skills.google/focuses/10599?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A1%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57496956)
+- [Fundamentals of Cloud Logging](https://www.skills.google/focuses/10911?catalog_rank=%7B%22rank%22%3A2%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57814326)
+- [Using Cloud Error Reporting to Remediate Workload Issues on GKE](https://www.skills.google/focuses/27166?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57814556)
+- [Using Cloud Trace on Kubernetes Engine](https://www.skills.google/focuses/5159?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57814397)
+- [Optimizing Applications Using Cloud Profiler](https://www.skills.google/focuses/60461?catalog_rank=%7B%22rank%22%3A1%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=57814484)
+
