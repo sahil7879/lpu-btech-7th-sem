@@ -1,5 +1,5 @@
 ## CA
-https://docs.google.com/forms/d/e/1FAIpQLSdTViJzOpm0bJdTczfSglOPeK7KioOQu1cgHzf7YNIId0Emkw/viewform?usp=dialog
+
 
 
 # labs 
