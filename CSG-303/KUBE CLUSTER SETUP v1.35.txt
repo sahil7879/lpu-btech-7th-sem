@@ -1,0 +1,107 @@
+kubernetes cluster 
+
+Creating kubernetes cluster 
+
+3 instances 
+
+ubuntu  
+
+1security group for all three 
+
+
+c7i.flex.large  2vcpu 4 gib memory    ---- control plane 
+
+t3 micro t2 micro  2,1 vcpu  1gib memory  --- worker nodes 
+
+connct  -   
+
+root  - sudo -i
+
+hostnamectl set-hostname name 
+
+bash 
+
+
+
+swapoff -a  
+
+
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+# Apply sysctl params without reboot
+sudo sysctl --system
+
+lsmod | grep br_netfilter
+lsmod | grep overlay
+
+#installation of containerd
+apt update -y
+apt install -y containerd  
+
+
+-- cgroup driver configuration on all nodes :
+
+mkdir -p /etc/containerd
+
+containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' | sed 's/sandbox_image = "registry.k8s.io\/pause:3.8"/sandbox_image = "registry.k8s.io\/pause:3.10.1"/' | sudo tee /etc/containerd/config.toml
+
+systemctl restart containerd
+
+
+-- Installing kubeadm, kubelet and kubectl on all nodes :
+
+
+sudo apt-get update
+# apt-transport-https may be a dummy package; if so, you can skip that package
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+# If the directory `/etc/apt/keyrings` does not exist, it should be created before the curl command, read the note below.
+# sudo mkdir -p -m 755 /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+# This overwrites any existing configuration in /etc/apt/sources.list.d/kubernetes.list
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+
+only master node command 
+
+kubeadm init --pod-network-cidr=192.168.0.0/16 >> cluster_initialized.txt
+
+
+cat cluster_initialized.txt
+
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+worker node command 
+
+kubeadm join 172.31.39.61:6443 --token hh5ztp.jmas0y4b3y18cdjk \
+        --discovery-token-ca-cert-hash sha256:175b692319c7e7xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+master node 
+
+ curl https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/calico.yaml -O
+kubectl apply -f calico.yaml
