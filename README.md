@@ -1,6 +1,6 @@
 
 ## diagrams and notes  
-
+# [KUBERNETES ARCHITECTURE](https://killercoda.com/playgrounds/scenario/kubernetes)  
 ## [Kubernetes docs](https://kubernetes.io/docs/) 
 ## [GOOGLE TERRAFORM DOCS](https://cloud.google.com/docs/terraform/iac-overview)
 ## learning path
