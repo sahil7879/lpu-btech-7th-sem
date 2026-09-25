@@ -6,6 +6,17 @@
 **Primary workstation:** A Debian Linux VM created in the same GCP project  
 **End product:** A modular, tested Terraform deployment with remote state, Registry/CFT integration, policy validation, and documented cleanup
 
+## Lab architecture and VM count
+
+The completed lab uses **two VMs**:
+
+| VM | Created by | Purpose | Included in application Terraform state? |
+|---|---|---|---|
+| `terraform-admin` | Student through the Google Cloud Console | Terraform installation and administration workstation | No |
+| `csg401-dev-web-01` | Terraform running inside `terraform-admin` | Worker/workload VM serving the demonstration web page | Yes |
+
+The admin VM is the bootstrap machine. The worker VM is evidence that Terraform can provision infrastructure from inside the admin VM. Do not manually create the worker VM in the Console.
+
 ## 1. End goal
 
 By the end of the lab, Terraform will manage:
@@ -22,7 +33,7 @@ By the end of the lab, Terraform will manage:
 - Remote Terraform state in a versioned Cloud Storage bucket
 - Native Terraform tests and an optional CFT policy-validation step
 
-The administration VM is created first with `gcloud` and remains outside the main Terraform state. This avoids destroying the machine that is running Terraform while it is still needed for cleanup.
+The administration VM is created first in the Google Cloud Console and remains outside the main Terraform state. Terraform then runs inside that VM and creates all other lab resources. This avoids destroying the machine that is running Terraform while it is still needed for cleanup.
 
 ## 2. Progression
 
@@ -69,78 +80,75 @@ ZONE             = asia-south1-a
 ADMIN_VM         = terraform-admin
 ```
 
-## 4. Phase 0 - Create the Terraform administration VM
+## 4. Phase 0 - Create the Terraform administration VM in the Console
 
-Perform this phase from Cloud Shell or from a computer with the Google Cloud CLI.
+Do not use the Google Cloud SDK for this phase. Perform all bootstrap work in the Google Cloud Console.
 
 ### 4.1 Select the project and enable bootstrap APIs
 
-```bash
-export PROJECT_ID="REPLACE_WITH_PROJECT_ID"
-export REGION="asia-south1"
-export ZONE="asia-south1-a"
+1. Open the Google Cloud Console.
+2. Select the dedicated billed training project.
+3. Open **APIs & Services > Library**.
+4. Enable these APIs if they are not already enabled:
+   - Compute Engine API
+   - Identity and Access Management (IAM) API
+   - Service Usage API
+   - Cloud Resource Manager API
+   - Cloud Storage API
+5. Open **Billing > Budgets & alerts** and create a small training budget with appropriate alert thresholds.
 
-gcloud config set project "$PROJECT_ID"
-gcloud services enable \
-  compute.googleapis.com \
-  iap.googleapis.com \
-  serviceusage.googleapis.com \
-  cloudresourcemanager.googleapis.com
-```
+Enabling an API does not by itself create a billable resource. The VMs, disks, external IP use, and stored data created later can incur charges.
 
-The user running the lab must have sufficient permissions to create the described resources. Prefer a dedicated training identity with narrowly selected roles. If this is a personal training project and broad temporary access is unavoidable, remove it after the lab.
+### 4.2 Create the Terraform administration service account
 
-### 4.2 Create a bootstrap network
+1. Open **IAM & Admin > Service Accounts**.
+2. Select **Create service account**.
+3. Enter:
+   - Service account name: `terraform-admin`
+   - Service account ID: `terraform-admin`
+   - Description: `Runs the CSG 401 Terraform capstone from the administration VM`
+4. Grant only the training permissions needed by this lab:
+   - Compute Network Admin
+   - Compute Instance Admin (v1)
+   - Service Account Admin
+   - Service Account User
+   - Storage Admin
+   - Service Usage Admin
+5. Finish without creating a service-account key.
 
-```bash
-gcloud compute networks create tf-admin-net \
-  --subnet-mode=custom
-
-gcloud compute networks subnets create tf-admin-subnet \
-  --network=tf-admin-net \
-  --range=10.250.0.0/28 \
-  --region="$REGION"
-
-gcloud compute firewall-rules create tf-admin-allow-iap-ssh \
-  --network=tf-admin-net \
-  --direction=INGRESS \
-  --action=ALLOW \
-  --rules=tcp:22 \
-  --source-ranges=35.235.240.0/20 \
-  --target-tags=tf-admin
-```
-
-The source range `35.235.240.0/20` belongs to IAP TCP forwarding. It is narrower and safer than permitting SSH from the entire internet.
+These permissions are intentionally separated instead of using Owner or Editor. In a managed organization, an administrator should replace them with a custom role scoped to the exact lab operations.
 
 ### 4.3 Create the administration VM
 
-```bash
-gcloud compute instances create terraform-admin \
-  --zone="$ZONE" \
-  --machine-type=e2-micro \
-  --subnet=tf-admin-subnet \
-  --tags=tf-admin \
-  --image-family=debian-12 \
-  --image-project=debian-cloud \
-  --boot-disk-type=pd-standard \
-  --boot-disk-size=10GB \
-  --shielded-secure-boot \
-  --shielded-vtpm \
-  --shielded-integrity-monitoring \
-  --metadata=enable-oslogin=TRUE
-```
+1. Open **Compute Engine > VM instances**.
+2. Select **Create instance**.
+3. Configure:
+   - Name: `terraform-admin`
+   - Region: `asia-south1`
+   - Zone: `asia-south1-a`
+   - Machine type: `e2-micro`
+   - Boot disk image: Debian 12
+   - Boot disk type: Standard persistent disk
+   - Boot disk size: 10 GB
+4. Under **Identity and API access**:
+   - Service account: select `terraform-admin`
+   - Access scopes: **Allow full access to all Cloud APIs**
+5. Under **Firewall**, do not select Allow HTTP or Allow HTTPS.
+6. Under **Security**, keep Shielded VM, vTPM, and integrity monitoring enabled. Enable Secure Boot when supported by the selected image.
+7. Under **Advanced options > Networking**:
+   - Use the default network and subnet for this bootstrap VM.
+   - Keep an ephemeral external IPv4 address so the VM can download Terraform packages.
+8. Select **Create**.
 
-This version assigns an ephemeral external IP so the VM can install packages without adding Cloud NAT. Administrative SSH is still restricted to IAP. Remove the VM promptly after the lab.
+The access scope allows the VM to request API tokens, while IAM roles on the attached service account determine what those tokens can actually do.
 
-Connect:
+### 4.4 Connect through the Console
 
-```bash
-gcloud compute ssh terraform-admin \
-  --zone="$ZONE" \
-  --tunnel-through-iap
-```
+On the VM instances page, select **SSH** beside `terraform-admin`. The browser opens a terminal inside the VM. All Terraform commands in the remaining phases run in this browser SSH terminal.
 
-### 4.4 Install Terraform on the VM
+If browser SSH is prohibited by an organization policy, use an administrator-approved console connection method. Do not open TCP port 22 to `0.0.0.0/0`.
+
+### 4.5 Install Terraform on the VM
 
 Run these commands inside the administration VM:
 
@@ -158,31 +166,100 @@ sudo apt-get update
 sudo apt-get install -y terraform
 
 terraform version
-gcloud version
 git --version
 jq --version
 ```
 
-### 4.5 Authenticate Terraform
+### 4.6 Verify metadata-based authentication
 
-For this personal development VM, authenticate with Application Default Credentials:
+Do not run `gcloud auth login` and do not create a credentials file. The Google provider automatically uses Application Default Credentials exposed by the attached VM service account through the metadata service.
+
+Verify the attached identity without the Google Cloud SDK:
 
 ```bash
-gcloud auth login --no-launch-browser
-gcloud auth application-default login --no-launch-browser
+curl -sS \
+  -H "Metadata-Flavor: Google" \
+  http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email
+```
+
+Expected result:
+
+```text
+terraform-admin@REPLACE_WITH_PROJECT_ID.iam.gserviceaccount.com
+```
+
+Verify that a short-lived access token is available without printing the token itself:
+
+```bash
+TOKEN_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+  -H "Metadata-Flavor: Google" \
+  http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token)
+
+test "$TOKEN_STATUS" = "200" && echo "Metadata credentials available"
+```
+
+The token is temporary and automatically rotated. Terraform retrieves it when required.
+
+### 4.7 Optional Google Cloud SDK equivalents
+
+The primary activity uses the Console. Keep these commands as instructor demonstrations, alternative automation, or troubleshooting references. They are not required for the main student path.
+
+From Cloud Shell or a workstation with the Google Cloud SDK:
+
+```bash
+export PROJECT_ID="REPLACE_WITH_PROJECT_ID"
+export REGION="asia-south1"
+export ZONE="asia-south1-a"
+
 gcloud config set project "$PROJECT_ID"
-gcloud auth application-default set-quota-project "$PROJECT_ID"
+
+gcloud services enable \
+  compute.googleapis.com \
+  iam.googleapis.com \
+  serviceusage.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  storage.googleapis.com
 ```
 
-Follow the displayed browser instructions. Do not download or create a service-account key.
-
-Verify:
+Create the administration service account and grant the same lab roles selected in the Console:
 
 ```bash
-gcloud auth list
-gcloud config get-value project
-gcloud projects describe "$PROJECT_ID" --format='value(projectId)'
+gcloud iam service-accounts create terraform-admin \
+  --display-name="CSG 401 Terraform administration"
+
+for ROLE in \
+  roles/compute.networkAdmin \
+  roles/compute.instanceAdmin.v1 \
+  roles/iam.serviceAccountAdmin \
+  roles/iam.serviceAccountUser \
+  roles/storage.admin \
+  roles/serviceusage.serviceUsageAdmin
+do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:terraform-admin@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="$ROLE"
+done
 ```
+
+Equivalent administration VM creation:
+
+```bash
+gcloud compute instances create terraform-admin \
+  --project="$PROJECT_ID" \
+  --zone="$ZONE" \
+  --machine-type=e2-micro \
+  --network=default \
+  --image-family=debian-12 \
+  --image-project=debian-cloud \
+  --boot-disk-type=pd-standard \
+  --boot-disk-size=10GB \
+  --service-account="terraform-admin@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --scopes=cloud-platform \
+  --shielded-vtpm \
+  --shielded-integrity-monitoring
+```
+
+The SDK alternative must produce the same architecture and permissions as the Console procedure. Do not use both methods to create duplicate administration VMs.
 
 ## 5. Phase 1 - Start with an empty project directory
 
@@ -578,13 +655,7 @@ echo "$WEB_URL"
 curl --retry 12 --retry-delay 10 "$WEB_URL"
 ```
 
-If `curl` fails initially, inspect startup-script logs:
-
-```bash
-gcloud compute instances get-serial-port-output csg401-dev-web-01 \
-  --zone=asia-south1-a \
-  --port=1 | tail -n 100
-```
+If `curl` fails initially, open **Compute Engine > VM instances**, select `csg401-dev-web-01`, and inspect its serial-port output and startup-script logs from the Console.
 
 ## 12. Phase 8 - Add secured storage
 
@@ -636,26 +707,28 @@ Run:
 ```bash
 terraform plan -out=storage.tfplan
 terraform apply storage.tfplan
-gcloud storage buckets describe "gs://$(terraform output -raw application_bucket_name)"
+terraform output -raw application_bucket_name
 ```
+
+Open **Cloud Storage > Buckets** in the Console and confirm that the displayed bucket has uniform bucket-level access, public-access prevention, and versioning enabled.
 
 ## 13. Phase 9 - Migrate local state to a remote GCS backend
 
 The state bucket is a bootstrap dependency and is created outside the application configuration so that deleting the application does not delete its own state.
 
-Create a globally unique bucket name:
+Create it in the Console:
 
-```bash
-export STATE_BUCKET="${PROJECT_ID}-csg401-tfstate"
-
-gcloud storage buckets create "gs://${STATE_BUCKET}" \
-  --project="$PROJECT_ID" \
-  --location="$REGION" \
-  --uniform-bucket-level-access \
-  --public-access-prevention
-
-gcloud storage buckets update "gs://${STATE_BUCKET}" --versioning
-```
+1. Open **Cloud Storage > Buckets**.
+2. Select **Create**.
+3. Use a globally unique name such as `PROJECT_ID-csg401-tfstate`.
+4. Location type: Region.
+5. Region: `asia-south1`.
+6. Storage class: Standard.
+7. Access control: Uniform.
+8. Public access prevention: Enforced.
+9. Create the bucket.
+10. Open the new bucket, select **Protection**, and enable object versioning.
+11. Record the exact bucket name before continuing.
 
 Create `backend.tf`:
 
@@ -673,8 +746,9 @@ Migrate:
 ```bash
 terraform init -migrate-state
 terraform state list
-gcloud storage ls --recursive "gs://${STATE_BUCKET}/csg401/capstone/dev"
 ```
+
+Open the state bucket in the Console and confirm that objects now exist under the `csg401/capstone/dev` prefix.
 
 Do not delete the local backup until the remote state has been verified. Restrict access to the state bucket because state can contain sensitive values.
 
@@ -1024,9 +1098,9 @@ jq '.resource_changes[] | {address, actions: .change.actions}' reviewed.plan.jso
 
 Mock tests validate configuration behavior without creating cloud resources. The ordinary saved plan still uses real provider data and must be reviewed before apply.
 
-## 18. Phase 14 - Optional CFT policy validation
+## 18. Phase 14 - Optional SDK-based CFT policy validation
 
-This step uses `gcloud beta terraform vet`, which is a Preview capability and needs extra permissions to read project and IAM ancestry. It is separate from consuming CFT modules.
+The main lab does not require this step. It uses the Google Cloud SDK command `gcloud beta terraform vet`, which is a Preview capability and needs extra permissions to read project and IAM ancestry. Keep it as an instructor demonstration or advanced extension. It is separate from consuming CFT modules through Terraform.
 
 Install or verify the component:
 
@@ -1107,7 +1181,7 @@ Apply the exact reviewed plan:
 terraform apply final.tfplan
 ```
 
-Verify:
+Verify from Terraform and the VM:
 
 ```bash
 terraform state list
@@ -1115,9 +1189,23 @@ terraform output
 terraform output -json | jq
 
 curl --retry 12 --retry-delay 10 "$(terraform output -raw web_url)"
+```
 
+Then verify through the Console:
+
+1. Open **VPC network > VPC networks** and locate the Terraform-created VPC and subnet.
+2. Open **Compute Engine > VM instances** and confirm both VMs are visible:
+   - `terraform-admin`, created manually
+   - `csg401-dev-web-01`, created by Terraform
+3. Open the worker VM details and verify its service account, network, tags, labels, Shielded VM settings, and external IP.
+4. Open **Cloud Storage > Buckets** and inspect the application bucket protections.
+5. Open **IAM & Admin > Service Accounts** and confirm the worker identity has no broad project role.
+
+Optional SDK verification:
+
+```bash
 gcloud compute networks describe "$(terraform output -raw network_name)"
-gcloud compute instances describe csg401-dev-web-01 --zone="$ZONE"
+gcloud compute instances describe csg401-dev-web-01 --zone=asia-south1-a
 gcloud storage buckets describe "gs://$(terraform output -raw application_bucket_name)"
 ```
 
@@ -1134,12 +1222,12 @@ Exit code `0` means no differences, `2` means changes exist, and `1` means an er
 
 | Symptom | Check |
 |---|---|
-| Provider authentication error | `gcloud auth application-default login` and quota project |
+| Provider authentication error | Attached `terraform-admin` service account, VM access scope, metadata endpoint, and assigned IAM roles |
 | API disabled error | CFT project-services plan and Service Usage permissions |
 | Bucket name conflict | Bucket names are globally unique; include the project ID |
 | VM cannot serve HTTP | Firewall target tag, source range, startup script log, Apache status |
 | Module refactor proposes recreation | Verify every `moved` source and destination address |
-| Backend initialization fails | Bucket name, state permissions, ADC, and prefix |
+| Backend initialization fails | Bucket name, Storage Admin permission, metadata credentials, and prefix |
 | Test has unknown computed values | Add a narrow `override_resource` value |
 | `terraform vet` returns 403 | Required IAM/project/folder ancestry read permissions |
 | Destroy blocked by bucket contents | Confirm this is the training bucket and `force_destroy = true` |
@@ -1165,29 +1253,47 @@ The state list should be empty. The state bucket and administration VM remain be
 exit
 ```
 
-From Cloud Shell or the original computer, verify that no application VM or application bucket remains.
+Return to the Console and verify that the Terraform-created worker VM and application bucket no longer exist. The manually created admin VM and state bucket remain temporarily.
 
 ### 22.3 Delete the state bucket only after verification
 
 State-bucket deletion is destructive and removes recovery history. Confirm the application has been destroyed and no other environment uses the bucket.
 
+Using the primary Console method:
+
+1. Open **Cloud Storage > Buckets**.
+2. Open the state bucket and inspect its contents one final time.
+3. Confirm that no other environment uses this bucket.
+4. Delete all objects and versions.
+5. Delete the bucket.
+
+Optional SDK equivalent:
+
 ```bash
-gcloud storage rm --recursive "gs://${STATE_BUCKET}/csg401/capstone/dev/**"
-gcloud storage buckets delete "gs://${STATE_BUCKET}"
+gcloud storage rm --recursive "gs://REPLACE_WITH_STATE_BUCKET/**"
+gcloud storage buckets delete "gs://REPLACE_WITH_STATE_BUCKET"
 ```
 
-### 22.4 Delete the administration VM and bootstrap network
+### 22.4 Delete the administration VM
+
+Using the primary Console method:
+
+1. Open **Compute Engine > VM instances**.
+2. Confirm that `csg401-dev-web-01` has already been destroyed by Terraform.
+3. Select `terraform-admin`.
+4. Select **Delete** and confirm deletion of the VM and its boot disk.
+5. Open **IAM & Admin > Service Accounts** and delete `terraform-admin` if it is used only for this lab.
+
+Do not delete the default VPC network merely because the admin VM used it; other resources or exercises may depend on it.
+
+Optional SDK equivalent:
 
 ```bash
 gcloud compute instances delete terraform-admin \
-  --zone="$ZONE"
+  --zone=asia-south1-a
 
-gcloud compute firewall-rules delete tf-admin-allow-iap-ssh
-
-gcloud compute networks subnets delete tf-admin-subnet \
-  --region="$REGION"
-
-gcloud compute networks delete tf-admin-net
+gcloud iam service-accounts delete \
+  "terraform-admin@REPLACE_WITH_PROJECT_ID.iam.gserviceaccount.com"
 ```
 
 ### 22.5 Final billing inspection
@@ -1206,7 +1312,7 @@ API enablement can remain without direct charges, but disabled APIs may be appro
 
 - [ ] Created and secured a dedicated Terraform administration VM.
 - [ ] Installed and verified Terraform on the VM.
-- [ ] Authenticated with ADC without a service-account key.
+- [ ] Confirmed that Terraform used the admin VM's attached service account without a key file.
 - [ ] Created the first VPC before introducing abstractions.
 - [ ] Replaced hard-coded values with variables and validation.
 - [ ] Added useful outputs.
@@ -1218,7 +1324,7 @@ API enablement can remain without direct charges, but disabled APIs may be appro
 - [ ] Applied the exact reviewed plan.
 - [ ] Confirmed a no-change final plan.
 - [ ] Destroyed Terraform-managed resources.
-- [ ] Deleted the state bucket, administration VM, and bootstrap network.
+- [ ] Deleted the state bucket, administration VM, its boot disk, and the lab-only administration service account.
 - [ ] Confirmed no unexpected billable resources remain.
 
 ## 24. Reference documentation
@@ -1232,5 +1338,4 @@ API enablement can remain without direct charges, but disabled APIs may be appro
 - [Terraform blueprints and Cloud Foundation Toolkit modules](https://cloud.google.com/docs/terraform/blueprints/terraform-blueprints)
 - [CFT project-services Registry module](https://registry.terraform.io/modules/terraform-google-modules/project-factory/google/latest/submodules/project_services)
 - [Validate policies with `gcloud beta terraform vet`](https://cloud.google.com/docs/terraform/policy-validation/validate-policies)
-- [IAP TCP forwarding](https://cloud.google.com/iap/docs/using-tcp-forwarding)
 - [Cloud Storage uniform bucket-level access](https://cloud.google.com/storage/docs/uniform-bucket-level-access)
