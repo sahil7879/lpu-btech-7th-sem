@@ -36,3 +36,4 @@ documentation links
 - [Monitoring Multiple Projects with Cloud Monitoring](https://www.skills.google/focuses/621?catalog_rank=%7B%22rank%22%3A2%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=103311245)
 - [Creating and Alerting on Logs-based Metrics](https://www.skills.google/focuses/619?catalog_rank=%7B%22rank%22%3A2%2C%22num_filters%22%3A0%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=104155933)
 - [Monitoring in Google Cloud: Challenge Lab](https://www.skills.google/focuses/63855?catalog_rank=%7B%22rank%22%3A5%2C%22num_filters%22%3A1%2C%22has_search%22%3Atrue%7D&parent=catalog&search_id=104156026)
+- [Configure and Analyze VPC Flow Logs](https://www.skills.google/course_templates/1680/labs/631808)
