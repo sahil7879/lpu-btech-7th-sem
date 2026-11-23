@@ -1,7 +1,3 @@
-### [CA2](https://docs.google.com/forms/d/e/1FAIpQLSf27wTLqu-2joalNOs3HNqhVlyRqpscLQn4lIddkqg4AWmRSA/viewform?usp=dialog)
-
-
-
 # labs 
 - [Infrastructure as Code with Terraform](https://www.cloudskillsboost.google/paths/11/course_templates/443/labs/508950)
 - [Creating Resource Dependencies with Terraform](https://www.cloudskillsboost.google/paths/11/course_templates/443/labs/508962)
