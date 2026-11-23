@@ -1,6 +1,6 @@
 ## CA 1 
 
-[CA2 link](https://docs.google.com/forms/d/e/1FAIpQLSdriDXULGc85F0cw9czFIgG2xlKJRdDQHTBFFIm361QAUNI5Q/viewform?usp=dialog)
+CA2
 ## Activity 1 
 [the instruction diagram](https://excalidraw.com/#json=XyhOY1tH9AZuK7g1WG8pk,nC8A028oN0JVwmdoQ_YFjg)  
 
